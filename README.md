@@ -30,7 +30,7 @@ npm run test:e2e
 ```
 
 `npm run check` 依次執行單元測試、型別檢查／正式 Build 及瀏覽器測試。
-Playwright 使用正式 Build 的 Vite preview，在 Chromium Android 尺寸及 WebKit iPhone 尺寸執行完整操作及離線重載測試。這不等同實體 iPhone 的主畫面安裝測試。
+Playwright 使用正式 Build 的 Vite preview，在 Chromium Android 尺寸及 WebKit iPhone 尺寸執行完整操作及離線重載測試。離線測試會關閉獨立測試來源伺服器，確認由 Service Worker 回應並保留資料，避免 WebKit 的 `setOffline` 模擬限制（[Playwright #42775](https://github.com/microsoft/playwright/issues/42775)）。這不等同實體 iPhone 的主畫面安裝測試。
 
 ## GitHub Pages
 

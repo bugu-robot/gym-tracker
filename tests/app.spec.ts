@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { startOfflineServer } from "./offline-server";
 test.beforeEach(async ({ page }) => {
   await page.goto("./");
   await expect(
@@ -126,34 +127,36 @@ test("backup download, preview, restore and malformed import protection", async 
     page.getByRole("button", { name: "機械胸推增加0.5公斤" }),
   ).toBeVisible();
 });
-test("installed service worker reloads app offline with saved data", async ({
+test("installed service worker reloads app with the origin server stopped", async ({
   page,
-  context,
 }) => {
-  await page
-    .getByRole("textbox", { name: "機械胸推重量", exact: true })
-    .fill("42.5");
-  await expect(
-    page.getByRole("status").filter({ hasText: "已自動保存" }),
-  ).toBeVisible();
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-  });
-  await page.reload();
-  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
-  await context.setOffline(true);
-  await page.reload();
-  await expect(
-    page.getByRole("textbox", { name: "機械胸推重量", exact: true }),
-  ).toHaveValue("42.5");
-  await page.getByRole("button", { name: "機械胸推增加2.5公斤" }).click();
-  await expect(
-    page.getByRole("textbox", { name: "機械胸推重量", exact: true }),
-  ).toHaveValue("45");
-  await page.reload();
-  await expect(
-    page.getByRole("textbox", { name: "機械胸推重量", exact: true }),
-  ).toHaveValue("45");
+  const origin = await startOfflineServer();
+  try {
+    await page.goto(origin.url);
+    const input = page.getByRole("textbox", {
+      name: "機械胸推重量",
+      exact: true,
+    });
+    await input.fill("42.5");
+    await expect(
+      page.getByRole("status").filter({ hasText: "已自動保存" }),
+    ).toBeVisible();
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    await page.reload();
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    await origin.stop();
+    const response = await page.reload();
+    expect(response?.fromServiceWorker()).toBe(true);
+    await expect(input).toHaveValue("42.5");
+    await page.getByRole("button", { name: "機械胸推增加2.5公斤" }).click();
+    await expect(input).toHaveValue("45");
+    await page.reload();
+    await expect(input).toHaveValue("45");
+  } finally {
+    await origin.stop();
+  }
 });
 
 test("weight boundaries and invalid drafts keep the last saved value", async ({
